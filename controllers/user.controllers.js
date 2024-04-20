@@ -166,16 +166,15 @@ const getMyNotifications = TryCatch(async (req, res, next) => {
   return res.status(200).json({ success: true, allRequest });
 });
 
-const getMyFriends = TryCatch(async (req, res, next) => {
+const getMyFriends = TryCatch(async (req, res) => {
   const chatId = req.query.chatId;
 
   const chats = await chatModel
-    .find({ members: req.user, groupChat: false })
+    .find({
+      members: req.user,
+      groupChat: false,
+    })
     .populate("members", "name avatar");
-
-  const requests = await requestModel
-    .find({ receiver: req.user })
-    .populate("sender", "name avatar");
 
   const friends = chats.map(({ members }) => {
     const otherUser = getOtherMember(members, req.user);
@@ -188,15 +187,21 @@ const getMyFriends = TryCatch(async (req, res, next) => {
   });
 
   if (chatId) {
-    const chat = await chatModel.findById(chatId);
+    const chat = await Chat.findById(chatId);
 
     const availableFriends = friends.filter(
       (friend) => !chat.members.includes(friend._id)
     );
 
-    return res.status(200).json({ success: true, availableFriends });
+    return res.status(200).json({
+      success: true,
+      friends: availableFriends,
+    });
   } else {
-    return res.status(200).json({ success: true, friends });
+    return res.status(200).json({
+      success: true,
+      friends,
+    });
   }
 });
 

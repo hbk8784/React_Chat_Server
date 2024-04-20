@@ -78,6 +78,8 @@ const getMyGroups = TryCatch(async (req, res, next) => {
     avatar: members.slice(0, 3).map(({ avatar }) => avatar.url),
   }));
 
+  // const myOnlyGroups = groups.data.chats.filter(({ groupChat }) => groupChat);
+
   return res.status(200).json({ success: true, groups });
 });
 
@@ -138,6 +140,8 @@ const removeMember = TryCatch(async (req, res, next) => {
 
   if (!toBeRemoved) new ErrorHandler("user not found", 404);
 
+  const allChatMembers = chat.members.map((i) => i.toString());
+
   chat.members = chat.members.filter(
     (member) => member.toString() !== userId.toString()
   );
@@ -150,7 +154,7 @@ const removeMember = TryCatch(async (req, res, next) => {
     chat.members,
     `${toBeRemoved} was removed from the Group`
   );
-  emitEvent(req, REFETCH_CHATS, chat.members);
+  emitEvent(req, REFETCH_CHATS, allChatMembers);
 
   return res
     .status(200)
@@ -322,41 +326,47 @@ const deleteChat = TryCatch(async (req, res, next) => {
   const chatId = req.params.id;
 
   const chat = await chatModel.findById(chatId);
-  if (!chat) return next(new ErrorHandler("chat not found", 404));
+
+  if (!chat) return next(new ErrorHandler("Chat not found", 404));
 
   const members = chat.members;
+
   if (chat.groupChat && chat.creator.toString() !== req.user.toString())
-    return next(new ErrorHandler("Admin Required", 403));
+    return next(
+      new ErrorHandler("You are not allowed to delete the group", 403)
+    );
 
-  if (!chat.groupChat && !chat.members.includes(req.user.toString()))
-    return next(new ErrorHandler("Not allowd", 403));
+  if (!chat.groupChat && !chat.members.includes(req.user.toString())) {
+    return next(
+      new ErrorHandler("You are not allowed to delete the chat", 403)
+    );
+  }
 
-  //here we have to delete all messages as well as files from cloudinary.
+  //   Here we have to dete All Messages as well as attachments or files from cloudinary
 
-  const messagesWithAttachments = await messageModel.find({
+  const messagesWithAttachments = await Message.find({
     chat: chatId,
     attachments: { $exists: true, $ne: [] },
   });
 
   const public_ids = [];
 
-  messagesWithAttachments.forEach(({ attachment }) => {
-    attachment.forEach(({ public_id }) => {
-      public_ids.push(public_id);
-    });
-  });
+  messagesWithAttachments.forEach(({ attachments }) =>
+    attachments.forEach(({ public_id }) => public_ids.push(public_id))
+  );
 
   await Promise.all([
     deleteFilesFromCloudinary(public_ids),
-    chatModel.deleteOne(),
-    messageModel.deleteMany({ chat: chatId }),
+    chat.deleteOne(),
+    Message.deleteMany({ chat: chatId }),
   ]);
 
   emitEvent(req, REFETCH_CHATS, members);
 
-  return res
-    .status(200)
-    .json({ success: true, message: "Chat deleted successfully" });
+  return res.status(200).json({
+    success: true,
+    message: "Chat deleted successfully",
+  });
 });
 
 export {

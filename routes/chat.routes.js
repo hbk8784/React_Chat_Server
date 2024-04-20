@@ -16,79 +16,23 @@ import {
   deleteChat,
 } from "../controllers/chat.controller.js";
 import { atachmentsMulter } from "../middlewares/multer.middlewares.js";
-import {
-  addMemberValidator,
-  deleteValidator,
-  getChatDetailsValidator,
-  getMessageValidator,
-  leaveGroupValidator,
-  newGroupValidator,
-  removeMemberValidator,
-  renameValidator,
-  sendAttachmentValidator,
-  validateHandler,
-} from "../lib/validator.lib.js";
 
-router.route("/new").post(
-  isAuthenticated,
-  // newGroupValidator(),
-  // validateHandler,
-  newGroupChat
-);
+router.route("/new").post(isAuthenticated, newGroupChat);
 router.route("/my").get(isAuthenticated, getMyChats);
 router.route("/my/groups").get(isAuthenticated, getMyGroups);
-router.route("/addmembers").put(
-  isAuthenticated,
-  // addMemberValidator(),
-  // validateHandler,
-  addMembers
-);
-router.route("/removemembers").put(
-  isAuthenticated,
-  // removeMemberValidator(),
-  // validateHandler,
-  removeMember
-);
-router.route("/leave/:id").delete(
-  isAuthenticated,
-  // leaveGroupValidator(),
-  // validateHandler,
-  leaveGroup
-);
-router.route("/message").post(
-  isAuthenticated,
-  atachmentsMulter,
-  // sendAttachmentValidator(),
-  // validateHandler,
-  sendAttachments
-);
+router.route("/addmembers").put(isAuthenticated, addMembers);
+router.route("/removemembers").put(isAuthenticated, removeMember);
+router.route("/leave/:id").delete(isAuthenticated, leaveGroup);
+router
+  .route("/message")
+  .post(isAuthenticated, atachmentsMulter, sendAttachments);
 
-router.route("/message/:id").get(
-  isAuthenticated,
-  // getMessageValidator(),
-  // validateHandler,
-  getMessages
-);
+router.route("/message/:id").get(isAuthenticated, getMessages);
 
 router
   .route("/:id")
-  .get(
-    isAuthenticated,
-    // getChatDetailsValidator(),
-    // validateHandler,
-    getChatDetails
-  )
-  .put(
-    isAuthenticated,
-    // renameValidator(),
-    //  validateHandler,
-    renameGroup
-  )
-  .delete(
-    isAuthenticated,
-    // deleteValidator(),
-    // validateHandler,
-    deleteChat
-  );
+  .get(isAuthenticated, getChatDetails)
+  .put(isAuthenticated, renameGroup)
+  .delete(isAuthenticated, deleteChat);
 
 export default router;
