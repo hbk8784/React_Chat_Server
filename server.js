@@ -14,8 +14,12 @@ import userRoute from "./routes/user.routes.js";
 import chatRoute from "./routes/chat.routes.js";
 import adminRoute from "./routes/admin.routes.js";
 import {
+  CHAT_JOINED,
+  CHAT_LEAVED,
   NEW_MESSAGE,
   NEW_MESSAGE_ALERT,
+  OFLINE_USERS,
+  ONLINE_USERS,
   START_TYPING,
   STOP_TYPING,
 } from "./constants/events.contants.js";
@@ -74,6 +78,8 @@ app.use(errorMiddleware);
 
 //-------------------Socket.io------------------------------------
 
+const onlineUsers = new Set();
+
 io.use((socket, next) => {
   cookieParser()(socket.request, socket.request.res, async (err) => {
     await socketAuthenticator(err, socket, next);
@@ -83,7 +89,7 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   const user = socket.user;
   userSocketIDs.set(user._id.toString(), socket.id);
-  console.log("a user connected", userSocketIDs);
+  // console.log("a user connected", userSocketIDs);
 
   socket.on(NEW_MESSAGE, async ({ chatId, members, messages }) => {
     const messageForRealTime = {
@@ -98,7 +104,7 @@ io.on("connection", (socket) => {
     };
     // console.log("message for realtime ", messageForRealTime);
 
-    console.log("emmiting message for real time", messageForRealTime);
+    // console.log("emmiting message for real time", messageForRealTime);
 
     const messageForDB = {
       content: messages,
@@ -135,9 +141,25 @@ io.on("connection", (socket) => {
     socket.to(memberSocket).emit(STOP_TYPING, { chatId });
   });
 
+  socket.on(CHAT_JOINED, ({ userId, members }) => {
+    onlineUsers.add(userId.toString());
+
+    const membersSocket = getSockets(members);
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
+  });
+
+  socket.on(CHAT_LEAVED, ({ userId, members }) => {
+    onlineUsers.delete(userId.toString());
+    const membersSocket = getSockets(members);
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
+  });
+
   socket.on("disconnect", () => {
     userSocketIDs.delete(user._id.toString);
-    console.log("user disconnected");
+    // console.log("user disconnected");
+    onlineUsers.delete(user._id.toString());
+
+    socket.broadcast.emit(ONLINE_USERS, Array.from(onlineUsers));
   });
 });
 

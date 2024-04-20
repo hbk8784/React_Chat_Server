@@ -344,7 +344,7 @@ const deleteChat = TryCatch(async (req, res, next) => {
 
   //   Here we have to dete All Messages as well as attachments or files from cloudinary
 
-  const messagesWithAttachments = await Message.find({
+  const messagesWithAttachments = await messageModel.find({
     chat: chatId,
     attachments: { $exists: true, $ne: [] },
   });
@@ -358,7 +358,7 @@ const deleteChat = TryCatch(async (req, res, next) => {
   await Promise.all([
     deleteFilesFromCloudinary(public_ids),
     chat.deleteOne(),
-    Message.deleteMany({ chat: chatId }),
+    messageModel.deleteMany({ chat: chatId }),
   ]);
 
   emitEvent(req, REFETCH_CHATS, members);
